@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// telling prisma what kind of db to use
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid()) // uuid is guaranteed uniqe string
+  createdAt DateTime  @default(now())
+  username  String    @unique
+  password  String
+  products  Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  name        String   @db.VarChar(255)
+  belongsToId String
+  belongsTo   User     @relation(fields: [belongsToId], references: [id])
+  updates     Update[]
+  // we don't have index for a productid and combination of belongstoId
+  // @@index([id, belongsToId]) it will work without this, but we need this to be optimized
+
+  @@unique([id, belongsToId])
+}
+
+enum UPDATE_STATUS {
+  IN_PROGRESS
+  SHIPPED
+  DEPRECATED
+}
+
+model Update {
+  id        String        @id @default(uuid())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  title     String
+  body      String
+  status    UPDATE_STATUS @default(IN_PROGRESS)
+  version   String? // optional field
+  asset     String?
+
+  productId    String
+  product      Product       @relation(fields: [productId], references: [id])
+  updatePoints UpdatePoint[]
+}
+
+model UpdatePoint {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name        String @db.VarChar(255)
+  description String
+
+  updateId String
+  update   Update @relation(fields: [updateId], references: [id])
+}
+
+// you can have more than one unique fields on a model but you can not have more than 1 id
+
+// Migrations 
+// 1. Teach the database what the data might looks like
+// 2. if we have a schema but we are including breaking schema (ex. add email to user)
+// we don't need migrations for nosql databases
+
+// the prisma client sdk gets generated based of the schema
